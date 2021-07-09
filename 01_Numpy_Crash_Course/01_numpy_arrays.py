@@ -147,3 +147,13 @@ ranarr.argmin()
 # posição do máximo
 ranarr.argmax()
 
+"""### dtype
+
+You can also grab the data type of the object in the array: [[reference](https://docs.scipy.org/doc/numpy-1.15.0/reference/generated/numpy.ndarray.dtype.html)]
+"""
+
+# tipo de dados
+ranarr.dtype
+
+myarr = np.random.rand(2)
+myarr.dtype
