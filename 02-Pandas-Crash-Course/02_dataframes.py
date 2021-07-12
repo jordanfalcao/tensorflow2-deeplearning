@@ -112,6 +112,77 @@ df.loc[['A','C'],['W','Y']]
 An important feature of pandas is conditional selection using bracket notation, very similar to numpy:
 """
 
+# recriando o mesmo DF
+np.random.seed(42)
+data = randint(-100,100,(5,4))
+df = pd.DataFrame(data, index, columns)
+
 # boolean
 df>0
 
+# Pandas remove os valores falso quando imprimimos o DF
+df[df>0]
+
+# visualização condicionada a UMA variável, retorna uma Serie
+df['X'] > 0
+
+# retorna apenas as LINHAS que a condição é True
+df[df['X'] > 0]
+
+# podemos pegar apenas um coluna do DF acima: Serie
+df[df['X']>0]['W']
+
+# múltiplas colunas: DataFrame
+df[df['X']>0][['Y','Z']]
+
+# podemos usar o .loc/.iloc no DF criado
+df[df['X']>0].iloc[0]  # linha 0
+
+"""For two conditions you can use | and & with parenthesis:"""
+
+# apenas as linhas que atendem às condições
+df[(df['W']>0) & (df['Y']>1)]
+
+# como temos um novo DF, podemos acessar as colunas desejadas
+df[(df['W']>0) & (df['Y']>1)][['W', 'Y']]
+
+"""## More Index Details
+
+Let's discuss some more features of indexing, including resetting the index or setting it something else. We'll also talk about index hierarchy!
+"""
+
+# numeramos os índices e transformamos o antigo numa coluna
+df.reset_index()
+
+# não fica salvo, usar 'inplace = True' ou 'df = df.reset_index()'
+df
+
+# criando um novo índice
+new_ind = ['CA', 'NY', 'WY', 'OR', 'CO']
+df['States'] = new_ind
+
+df
+
+# em vez de resetar, inserimos o novo index
+df = df.set_index('States')   # note que 'States' vira o nome do índice, e não uma coluna como 'W X Y Z'
+
+# tornamos a mudança acima permanente
+df
+
+# States é o índice, não uma coluna
+df.columns
+
+"""## DataFrame Summaries
+There are a couple of ways to obtain summary data on DataFrames.<br>
+<tt><strong>df.describe()</strong></tt> provides summary statistics on all numerical columns.<br>
+<tt><strong>df.info and df.dtypes</strong></tt> displays the data type of all columns.
+"""
+
+# descrição das estatísticas das colunas numéricas
+df.describe()
+
+# tipo de dados das colunas e linhas não-nulas
+df.info()
+
+# tipo de dados das colunas
+df.dtypes
