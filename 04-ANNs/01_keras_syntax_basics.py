@@ -14,7 +14,7 @@ With TensorFlow 2.0 , Keras is now the main API choice. Let's work through a sim
 
 To learn the basic syntax of Keras, we will use a very simple fake data set, in the subsequent lectures we will focus on real datasets, along with feature engineering! For now, let's focus on the syntax of TensorFlow 2.0.
 
-Let's pretend this data are measurements of some rare gem stones, with 2 measurement features and a sale price. Our final goal would be to try to predict the sale price of a new gem stone we just mined from the ground, in order to try to set a fair price in the market.
+Let's pretend this data are measurements of some **rare gem stones**, with 2 measurement features and a sale price. Our final goal would be to try to predict the sale price of a new gem stone we just mined from the ground, in order to try to set a fair price in the market.
 """
 
 import pandas as pd
@@ -74,7 +74,7 @@ scaler = MinMaxScaler()
 # treinando o 'scaler' no dados de treino
 # .fit() calcula o STD, MIN e MAX para normalizar
 # treinamos APENAS os dados de treino para garantirmos que não estamos visualizando os 
-# dados de treino previamente
+# dados de teste previamente
 scaler.fit(X_train)
 
 # transformando nossos dados
@@ -99,8 +99,190 @@ There are several ways you can import Keras from Tensorflow (this is hugely a pe
 
 import tensorflow as tf
 
+"""## Creating a Model
+
+There are **two ways** to create models through the TF 2 Keras API, either pass in a **list of layers all at once**, or **add them one by one**.
+
+Let's show both methods.
+"""
+
 from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Activation
 
-# entendendo a função
-help(Sequential)
+# entendendo a função, cria modelo Sequential
+# help(Sequential)
 
+# Add Dense layer
+# help(Dense)
+
+# função de ativação
+# help(Activation)
+
+"""### Model - as a list of layers"""
+
+# densamente conectado, cada neurônio é conectado a cada neurônio na próxima camada
+# parâmetros: 'units': quantos neurônios nesta camada. 'activation': qual função de ativação
+
+# adicionamos uma lista de camadas
+# model = Sequential([Dense(4, activation='relu'),
+#                     Dense(2, activation='relu'),
+#                     Dense(1)]) # If you don't specify anything, no activation is applied
+#                                  # (ie. "linear" activation: a(x) = x)
+
+"""### Model - adding in layers one by one"""
+
+# adicionamos uma camada por vez 
+model = Sequential()
+
+model.add(Dense(4, activation='relu'))
+model.add(Dense(4, activation='relu'))
+model.add(Dense(4, activation='relu'))
+
+# última camada usada para predição, temos apenas um 'target', que é o 'price'
+# por isso, coloca-se apenas um neurônio
+model.add(Dense(1))
+
+# por enquanto vamos focar nos parâmetros 'optimizer' e 'loss'
+# optimizer: string com o nome do otimizador escolhido
+# loss: string com a função de perda escolhida
+model.compile(optimizer='rmsprop', loss='mse') # 'Root Mean Square Propagation' e 'Mean Squared Error'
+
+"""### Choosing an optimizer and loss
+
+Keep in mind what kind of problem you are trying to solve:
+
+    # For a multi-class classification problem
+    model.compile(optimizer='rmsprop',
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+
+    # For a binary classification problem
+    model.compile(optimizer='rmsprop',
+                  loss='binary_crossentropy',
+                  metrics=['accuracy'])
+
+    # For a mean squared error regression problem
+    model.compile(optimizer='rmsprop',
+                  loss='mse')
+
+# Training
+
+Below are some common definitions that are necessary to know and understand to correctly utilize Keras:
+
+* Sample: one element of a dataset.
+    * Example: one image is a sample in a convolutional network
+    * Example: one audio file is a sample for a speech recognition model
+* Batch: a set of N samples. The samples in a batch are processed independently, in parallel. If training, a batch results in only one update to the model.A batch generally approximates the distribution of the input data better than a single input. The larger the batch, the better the approximation; however, it is also true that the batch will take longer to process and will still result in only one update. For inference (evaluate/predict), it is recommended to pick a batch size that is as large as you can afford without going out of memory (since larger batches will usually result in faster evaluation/prediction).
+* Epoch: an arbitrary cutoff, generally defined as "one pass over the entire dataset", used to separate training into distinct phases, which is useful for logging and periodic evaluation.
+* When using validation_data or validation_split with the fit method of Keras models, evaluation will be run at the end of every epoch.
+* Within Keras, there is the ability to add callbacks specifically designed to be run at the end of an epoch. Examples of these are learning rate changes and model checkpointing (saving).
+"""
+
+# treinando
+# inicialmente focaremos nos parâmetros x, y e epochs
+model.fit(x=X_train, y=y_train, epochs=250) # passa 250 vezes pelo dataset todo
+
+"""## Evaluation
+
+Let's evaluate our performance on our training set and our test set. We can compare these two performances to check for overfitting.
+"""
+
+# histórico de evolução da função de perda
+model.history.history
+
+# transformando o dict num DF
+loss_df = pd.DataFrame(model.history.history)
+
+# plotando
+loss_df.plot()
+plt.xlim(0,250)
+plt.title("Training Loss per Epoch");
+
+"""### Compare final evaluation (MSE) on training set and test set.
+
+These should hopefully be fairly close to each other.
+"""
+
+model.metrics_names
+
+# model.evaluate retorna a perda, MSE - determinado no modelo
+model.evaluate(X_test, y_test, verbose=0)
+
+# podemos avaliar também a perda nos dados de treino
+model.evaluate(X_train, y_train, verbose=0)
+
+"""### Further Evaluations"""
+
+# prevendo os resultados nos dados de teste
+test_predictions = model.predict(X_test)
+
+# price predictions
+# test_predictions   # formato NP rray
+
+# convertendo em Series
+test_predictions = pd.Series(test_predictions.reshape(300,))  # formato PD Series
+
+test_predictions
+
+# convertendo o y_test em DF
+pred_df = pd.DataFrame(y_test, columns=['Test True Y'])
+
+# concatenando com os dados previstos
+pred_df = pd.concat([pred_df, test_predictions], axis = 1)
+
+# renomeando as colunas
+pred_df.columns = ['Test True Y', 'Model Predictions']
+
+pred_df
+
+# comparando o previsto com o real
+sns.scatterplot(x='Test True Y',y='Model Predictions',data=pred_df);
+
+# visualizando a distribuição do erro em cada ponto
+pred_df['Error'] = pred_df['Test True Y'] - pred_df['Model Predictions']
+sns.distplot(pred_df['Error'],bins=50);
+
+from sklearn.metrics import mean_absolute_error,mean_squared_error
+
+# erro médio absoluto do modelo
+mean_absolute_error(pred_df['Test True Y'], pred_df['Model Predictions'])
+
+# erro médio quadrático do modelo
+mean_squared_error(pred_df['Test True Y'], pred_df['Model Predictions']) # mesmo valor achado no evaluate [30]
+
+df.describe()
+
+"""A média do preço é 498.67, ou seja, nosso erro absoluto: '4.08' é menos de 1% da média."""
+
+# se quisermos o RMSE - root mean squared error, tiramos a raiz quadrada
+mean_squared_error(pred_df['Test True Y'], pred_df['Model Predictions'])**0.5
+
+"""# Predicting on brand new data
+
+What if we just saw a brand new gemstone from the ground? What should we price it at? This is the **exact** same procedure as predicting on a new test data!
+"""
+
+# prevendo preço de uma nova gema
+new_gem = [[998, 1000]]
+
+# precisamos normalizar para inserir no modelo
+new_gem = scaler.transform(new_gem)
+new_gem
+
+# prevendo
+print('A nova gema terá um valor previsto de: U$D {0:.2f}.'.format(model.predict(new_gem)[0][0]))
+
+"""## Saving and Loading a Model"""
+
+from tensorflow.keras.models import load_model
+
+# salvando
+model.save('my_gem_model.h5')
+
+"""Se quisermos abrir num novo notebook:"""
+
+# carregando o modelo criado
+later_model = load_model('my_gem_model.h5')
+
+# usando para previsões
+later_model.predict(new_gem)
