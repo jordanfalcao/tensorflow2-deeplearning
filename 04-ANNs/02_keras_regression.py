@@ -144,3 +144,168 @@ plt.figure(figsize = (8,5))
 sns.boxplot(x='waterfront',y='price',data=df)
 plt.show()
 
+"""## Working with Feature Data"""
+
+df.info()
+
+df = df.drop('id', axis=1)
+
+df.head()
+
+"""### Feature Engineering from Date"""
+
+# converting to datetime
+df['date'] = pd.to_datetime(df['date'])
+
+df['date']
+
+# extracting year
+df['month'] = df['date'].apply(lambda date: date.month)
+
+# extracting year
+df['year'] = df['date'].apply(lambda date: date.year)
+
+plt.figure(figsize=(12,6))
+sns.boxplot(x='month', y = 'price', data = df)
+plt.show()
+
+# easier way to see the information
+df.groupby('month').mean()['price'].plot()
+
+df.groupby('year').mean()['price'].plot()
+
+# drop date
+df = df.drop('date', axis=1)
+
+df.columns
+
+# there are 70 categories
+df['zipcode'].value_counts()
+
+df = df.drop('zipcode', axis=1)
+
+df.columns
+
+# most year is 0
+df['yr_renovated'].value_counts()
+
+# it also makes sense, 0 = no basement
+df['sqft_basement'].value_counts()
+
+"""## Scaling and Train Test Split"""
+
+X = df.drop('price', axis=1).values
+y = df['price'].values
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=101)
+
+"""### Scaling"""
+
+from sklearn.preprocessing import MinMaxScaler
+
+# initializing
+scaler = MinMaxScaler()
+
+# training and transforming
+X_train = scaler.fit_transform(X_train)
+
+# just transforming
+X_test = scaler.transform(X_test)
+
+X_train.shape
+
+X_test.shape
+
+"""## Creating a Model"""
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+
+# creating
+model = Sequential()
+
+# add hiden layers one by one
+model.add(Dense(19, activation='relu'))
+model.add(Dense(19, activation='relu'))
+model.add(Dense(19, activation='relu'))
+model.add(Dense(19, activation='relu'))
+model.add(Dense(1))
+
+model.compile(optimizer='adam', loss='mse')
+
+"""## Training the Model"""
+
+# passing validation data, not to update the weights and bias, just to validation
+model.fit(x=X_train, y=y_train,
+          validation_data=(X_test,y_test),        # .values
+          batch_size=128, epochs=400) # the smaller the batch, the longer the training
+
+# loss and validation loss
+losses = pd.DataFrame(model.history.history)
+losses.head()
+
+# comparing train and test loss 
+losses.plot(figsize=(8,5))
+plt.xlim(0,400);
+
+"""Our validation loss continues decreasing, so there is nos overfiting and we can keep training our data.
+
+# Evaluation on Test Data
+
+https://scikit-learn.org/stable/modules/model_evaluation.html#regression-metrics
+"""
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error, explained_variance_score
+
+predictions = model.predict(X_test)
+
+# root mean square error
+np.sqrt(mean_squared_error(y_test, predictions))
+
+# mean absolute error
+mean_absolute_error(y_test, predictions)
+
+# best possible score is 1.0
+explained_variance_score(y_test,predictions)
+
+# mean of the price to compare
+df['price'].mean()
+
+"""Our mean absolute error and root mean square error are not great in comparison with mean of the price. """
+
+# comparing
+plt.figure(figsize=(12,6))
+
+# perfect predictions
+plt.plot(y_test,y_test,'r')
+
+# predictions
+plt.scatter(y_test, predictions)
+plt.show()
+
+errors = y_test.reshape(6480, 1) - predictions
+
+plt.figure(figsize=(10,6))
+sns.histplot(errors)
+plt.show()
+
+"""### Predicting on a brand new house"""
+
+# features
+df.drop('price', axis=1).iloc[0]
+
+single_house = df.drop('price', axis=1).iloc[0]
+
+# scaling
+single_house = scaler.transform(single_house.values.reshape(-1, 19))
+
+model.predict(single_house)
+
+df['price'].head(1)
+
+"""Quite different the prediction from the real.
+We can remove 1% or 2% most expensive houses from the dataset.
+"""
