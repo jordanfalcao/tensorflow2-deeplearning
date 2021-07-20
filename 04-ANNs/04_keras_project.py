@@ -221,7 +221,6 @@ plt.show()
 
 df.describe().transpose()
 
-# visualizing the target variable
 plt.figure(figsize=(12,6))
 sns.histplot(x = 'loan_amnt', data=df)
 plt.show()
@@ -258,8 +257,171 @@ sorted(df['grade'].unique())
 
 sorted(df['sub_grade'].unique())
 
-# visualizing the target variable
 plt.figure(figsize=(8,5))
 sns.countplot(x = 'grade', hue = 'loan_status', data=df, order=['A', 'B', 'C', 'D', 'E', 'F', 'G'])
 plt.show()
+
+order = sorted(df['sub_grade'].unique())
+plt.figure(figsize=(14,6))
+sns.countplot(x = 'sub_grade', hue = 'loan_status', data=df, order=order)
+plt.show()
+
+plt.figure(figsize=(12,5))
+sns.countplot(x = 'sub_grade', data=df, order=order, palette='icefire')
+plt.show()
+
+# isolating F and G subgrades
+f_and_g = df[(df['grade'] == 'G') | (df['grade'] == 'F')]
+order_2 = sorted(f_and_g['sub_grade'].unique())
+
+plt.figure(figsize=(12,5))
+sns.countplot(x = 'sub_grade', hue = 'loan_status', data=f_and_g, order=order_2)
+plt.show()
+
+df['loan_status'].unique()
+
+# dummy variable
+df['loan_repaid'] = df['loan_status'].map({'Fully Paid': 1, 'Charged Off': 0})
+
+df[['loan_repaid', 'loan_status']]
+
+# correlation between the 'target variable' and others numeric features
+df.corr()['loan_repaid'][:-1].sort_values().plot(kind='bar', figsize = (7,4))
+plt.show()
+
+"""---
+# Section 2: Data PreProcessing
+
+**Section Goals: Remove or fill any missing data. Remove unnecessary or repetitive features. Convert categorical string features to dummy variables.**
+"""
+
+df.head()
+
+# length of the DataFrame
+df.shape[0]
+
+# missing valules per column
+df.isnull().sum()
+
+# missing values percentage of the total DF
+(df.isnull().sum()/len(df)) * 100
+
+"""**Examining 'emp_title' and 'emp_length':**"""
+
+feat_info('emp_title')
+print('\n')
+feat_info('emp_length')
+
+df['emp_title'].nunique()
+
+df['emp_title'].value_counts()
+
+"""**Realistically there are too many unique job titles to try to convert this to a dummy variable feature. Let's remove that emp_title column:**"""
+
+# droping 'emp_title'
+df = df.drop('emp_title', axis=1)
+
+df['emp_length'].nunique()
+
+sorted(df['emp_length'].dropna().unique())
+
+emp_length_order = [ '< 1 year',
+                    '1 year',
+                    '2 years',
+                    '3 years',
+                    '4 years',
+                    '5 years',
+                    '6 years',
+                    '7 years',
+                    '8 years',
+                    '9 years',
+                    '10+ years']
+
+plt.figure(figsize=(12,5))
+sns.countplot(x = 'emp_length', data=df, order=emp_length_order)
+plt.show()
+
+plt.figure(figsize=(12,5))
+sns.countplot(x = 'emp_length', data=df, order=emp_length_order, hue='loan_status')
+plt.show()
+
+emp_co = df[df['loan_status']=="Charged Off"].groupby("emp_length").count()['loan_status']
+emp_co
+
+emp_fp = df[df['loan_status']=="Fully Paid"].groupby("emp_length").count()['loan_status']
+emp_fp
+
+emp_total = df.groupby("emp_length").count()['loan_status']
+emp_total
+
+emp_len = emp_co / emp_total
+emp_len
+
+emp_len.plot(kind = 'bar', figsize=(8,5))
+plt.show()
+
+"""**Charge off rates are extremely similar across all employment lengths. Go ahead and drop the emp_length column. So there is no strong relationship between employment length and being charged off.**"""
+
+df = df.drop('emp_length', axis = 1)
+
+df.isnull().sum()
+
+"""**Review vs Purpose columns.**"""
+
+feat_info('purpose')
+print('\n')
+feat_info('title')
+
+df['purpose'].unique()
+
+df['title'].head(10)
+
+"""**The title column is simply a string subcategory/description of the purpose column.**"""
+
+df = df.drop('title', axis = 1)
+
+"""---
+**Find out what the mort_acc feature represents**
+"""
+
+feat_info('mort_acc')
+
+df['mort_acc'].value_counts()
+
+# Correlation with the mort_acc column
+df.corr()['mort_acc'].sort_values()[:-1]
+
+"""**We will group the dataframe by the total_acc and calculate the mean value for the mort_acc per total_acc entry.**"""
+
+print('Mean of mort_acc column per total_acc')
+df.groupby('total_acc')['mort_acc'].mean()
+
+feat_info('total_acc')
+
+"""**Let's fill in the missing mort_acc values based on their total_acc value. If the mort_acc is missing, then we will fill in that missing value with the mean value corresponding to its total_acc value from the Series we created above.**"""
+
+total_acc_avg = df.groupby('total_acc').mean()['mort_acc']
+
+# example
+total_acc_avg[3.0]
+
+'''
+    Accepts the total_acc and mort_acc values for the row.
+    Checks if the mort_acc is NaN , if so, it returns the avg mort_acc value
+    for the corresponding total_acc value for that row.
+    
+    total_acc_avg here should be a Series or dictionary containing the mapping of the
+    groupby averages of mort_acc per total_acc values.
+'''
+
+def fill_mort_acc(total_acc,mort_acc):
+  if np.isnan(mort_acc):
+    return total_acc_avg[total_acc]
+  else:
+    return mort_acc
+
+# fill NaN with the mean
+df['mort_acc'] = df.apply(lambda x: fill_mort_acc(x['total_acc'], x['mort_acc']), axis = 1)
+
+df.isnull().sum()
 
