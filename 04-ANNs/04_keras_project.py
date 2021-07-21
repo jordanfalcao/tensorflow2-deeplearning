@@ -413,7 +413,7 @@ total_acc_avg[3.0]
     total_acc_avg here should be a Series or dictionary containing the mapping of the
     groupby averages of mort_acc per total_acc values.
 '''
-
+# creating the fill function
 def fill_mort_acc(total_acc,mort_acc):
   if np.isnan(mort_acc):
     return total_acc_avg[total_acc]
@@ -424,4 +424,126 @@ def fill_mort_acc(total_acc,mort_acc):
 df['mort_acc'] = df.apply(lambda x: fill_mort_acc(x['total_acc'], x['mort_acc']), axis = 1)
 
 df.isnull().sum()
+
+"""***revol_util* and the *pub_rec_bankruptcies* have missing data points, but they account for less than 0.5% of the total data. So we remove the rows that are missing those values in those columns with dropna().**"""
+
+# removing missing values
+df = df.dropna()
+
+df.isnull().sum()
+
+len(df)
+
+"""## Categorical Variables and Dummy Variables
+
+**We're done working with the missing data! Now we just need to deal with the string values due to the categorical columns.**
+
+**TASK: List all the columns that are currently non-numeric. [Helpful Link](https://stackoverflow.com/questions/22470690/get-list-of-pandas-dataframe-columns-based-on-data-type)**
+
+[Another very useful method call](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.select_dtypes.html)
+"""
+
+df.select_dtypes(include='object').columns
+
+"""---
+**Let's now go through all the string features to see what we should do with them.**
+
+---
+
+### term feature
+
+**Convert the term feature into either a 36 or 60 integer numeric data type using .apply() or .map().**
+"""
+
+feat_info('term')
+
+df['term'].unique()
+
+df['term'] = df['term'].map({' 36 months': 36, ' 60 months': 60})
+# df['term'] = df['term'].apply(lambda term: int(term[:3]))
+
+"""### grade feature
+
+**We already know grade is part of sub_grade, so just drop the grade feature.**
+"""
+
+df = df.drop('grade', axis = 1)
+
+"""**TASK: Convert the subgrade into dummy variables. Then concatenate these new columns to the original dataframe. Remember to drop the original subgrade column and to add drop_first=True to your get_dummies call.**"""
+
+subgrade_dummies = pd.get_dummies(df['sub_grade'], drop_first=True)
+
+df = pd.concat([df.drop('sub_grade', axis = 1), subgrade_dummies], axis=1)
+
+df.columns
+
+df.select_dtypes(include='object').columns
+
+"""### verification_status, application_type, initial_list_status, purpose 
+**TASK: Convert these columns: ['verification_status', 'application_type','initial_list_status','purpose'] into dummy variables and concatenate them with the original dataframe. Remember to set drop_first=True and to drop the original columns.**
+"""
+
+dummies = pd.get_dummies(df[['verification_status', 'application_type','initial_list_status','purpose']],drop_first=True)
+df = df.drop(['verification_status', 'application_type','initial_list_status','purpose'],axis=1)
+df = pd.concat([df,dummies],axis=1)
+# df.columns
+
+"""### home_ownership
+**TASK:Review the value_counts for the home_ownership column.**
+"""
+
+df['home_ownership'].value_counts()
+
+"""**TASK: Convert these to dummy variables, but [replace](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.replace.html) NONE and ANY with OTHER, so that we end up with just 4 categories, MORTGAGE, RENT, OWN, OTHER. Then concatenate them with the original dataframe. Remember to set drop_first=True and to drop the original columns.**"""
+
+df = df.replace({'home_ownership': {'NONE': 'OTHER', 'ANY': 'OTHER'}})
+
+dummies = pd.get_dummies(df['home_ownership'], drop_first=True)
+df = pd.concat([df.drop('home_ownership', axis = 1), dummies], axis = 1)
+
+"""### address
+**TASK: Let's feature engineer a zip code column from the address in the data set. Create a column called 'zip_code' that extracts the zip code from the address column.**
+"""
+
+# zip code = last 5 numbers
+df['address']
+
+# last 5 numbers
+df['zip_code'] = df['address'].apply(lambda address: address[-5:])
+
+"""**Now make this zip_code column into dummy variables using pandas. Concatenate the result and drop the original zip_code column along with dropping the address column.**"""
+
+dummies = pd.get_dummies(df['zip_code'], drop_first=True)
+df = df.drop(['zip_code', 'address'], axis=1)
+df = pd.concat([df, dummies], axis=1)
+
+# df.columns
+
+df.select_dtypes('object').columns
+
+"""### issue_d 
+
+**TASK: This would be data leakage, we wouldn't know beforehand whether or not a loan would be issued when using our model, so in theory we wouldn't have an issue_date, drop this feature.**
+"""
+
+df['issue_d'].nunique()
+
+feat_info('issue_d')
+
+df = df.drop('issue_d', axis=1)
+
+"""### earliest_cr_line
+**TASK: This appears to be a historical time stamp feature. Extract the year from this feature using a .apply function, then convert it to a numeric feature. Set this new data to a feature column called 'earliest_cr_year'.Then drop the earliest_cr_line feature.**
+"""
+
+feat_info('earliest_cr_line')
+
+df['earliest_cr_line']
+
+df['earliest_cr_year'] = df['earliest_cr_line'].apply(lambda year: int(year[-4:]))
+df = df.drop('earliest_cr_line', axis=1)
+
+df.select_dtypes('object').columns
+
+"""## Train Test Split"""
 
