@@ -545,5 +545,154 @@ df = df.drop('earliest_cr_line', axis=1)
 
 df.select_dtypes('object').columns
 
-"""## Train Test Split"""
+"""**Drop the load_status column, since its a duplicate of the loan_repaid column. We'll use the loan_repaid column since its already in 0s and 1s.**"""
 
+# duplicate
+df = df.drop('loan_status', axis=1)
+
+"""## Train Test Split
+
+**TASK: Import train_test_split from sklearn.**
+"""
+
+from sklearn.model_selection import train_test_split
+
+"""**TASK: Set X and y variables to the .values of the features and label.**"""
+
+X = df.drop('loan_repaid', axis=1).values
+y = df['loan_repaid'].values
+
+"""----
+----
+
+# OPTIONAL
+
+## Grabbing a Sample for Training Time
+
+### OPTIONAL: Use .sample() to grab a sample of the 490k+ entries to save time on training. Highly recommended for lower RAM computers or if you are not using GPU.
+
+----
+----
+"""
+
+# df = df.sample(frac=0.1,random_state=101)
+print(len(df))
+
+"""**TASK: Perform a train/test split with test_size=0.2 and a random_state of 101.**"""
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=101)
+
+"""## Normalizing the Data
+
+**TASK: Use a MinMaxScaler to normalize the feature data X_train and X_test. Recall we don't want data leakge from the test set so we only fit on the X_train data.**
+"""
+
+from sklearn.preprocessing import MinMaxScaler
+
+scaler = MinMaxScaler()
+
+# train and transform
+X_train = scaler.fit_transform(X_train)
+
+# only transform
+X_test = scaler.transform(X_test)
+
+print(X_train.max())
+print(X_test.max())
+
+print(X_train.min())
+print(X_test.min())
+
+"""# Creating the Model
+
+**TASK: Run the cell below to import the necessary Keras functions.**
+"""
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+
+"""**TASK: Build a sequential model to will be trained on the data. You have unlimited options here, but here is what the solution uses: a model that goes 78 --> 39 --> 19--> 1 output neuron. OPTIONAL: Explore adding [Dropout layers](https://keras.io/layers/core/) [1](https://en.wikipedia.org/wiki/Dropout_(neural_networks)) [2](https://towardsdatascience.com/machine-learning-part-20-dropout-keras-layers-explained-8c9f6dc4c9ab)**"""
+
+# 78 features and 1 target variable
+df.shape
+
+model = Sequential()
+
+# input layer
+model.add(Dense(78, activation='relu'))
+model.add(Dropout(0.2))
+
+# hidden layers
+model.add(Dense(units=39,activation='relu'))
+model.add(Dropout(0.2))
+
+model.add(Dense(units=19,activation='relu'))
+model.add(Dropout(0.2))
+
+# output layer
+model.add(Dense(units=1,activation='sigmoid'))
+
+model.compile(loss='binary_crossentropy', optimizer='adam')
+
+"""**TASK: Fit the model to the training data for at least 25 epochs. Also add in the validation data for later plotting. Optional: add in a batch_size of 256.**"""
+
+model.fit(x=X_train, y=y_train,
+          batch_size=256,
+          epochs=25,
+          validation_data=(X_test,y_test))
+
+"""**TASK: OPTIONAL: Save your model.**"""
+
+from tensorflow.keras.models import load_model
+
+model.save('full_data_project_model.h5')
+
+"""# Section 3: Evaluating Model Performance.
+
+**TASK: Plot out the validation loss versus the training loss.**
+"""
+
+model_loss = pd.DataFrame(model.history.history)
+model_loss.plot(figsize=(8,5))
+plt.show()
+
+"""**TASK: Create predictions from the X_test set and display a classification report and confusion matrix for the X_test set.**"""
+
+from sklearn.metrics import classification_report, confusion_matrix
+
+# deprecated
+predictions = model.predict_classes(X_test)
+
+# new method
+predictions_2 = (model.predict(X_test) > 0.5).astype("int32")
+
+print(classification_report(y_test, predictions))
+print(classification_report(y_test, predictions_2))
+
+print(confusion_matrix(y_test, predictions))
+print(confusion_matrix(y_test, predictions_2))
+
+"""**TASK: Given the customer below, would you offer this person a loan?**"""
+
+import random
+random.seed(101)
+random_ind = random.randint(0,len(df))
+
+new_customer = df.drop('loan_repaid',axis=1).iloc[random_ind]
+new_customer
+
+single_costumer = scaler.transform(new_customer.values.reshape(1, 78))
+
+# first way
+(model.predict(single_costumer) > 0.5).astype("int32")
+
+# second way
+(model.predict(new_customer.values.reshape(1,78)) > 0.5).astype("int32")
+
+# third way
+print(model.predict_classes(new_customer.values.reshape(1,78)))
+
+"""**TASK: Now check, did this person actually end up paying back their loan?**"""
+
+df.iloc[random_ind]['loan_repaid']
