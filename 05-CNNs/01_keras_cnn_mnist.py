@@ -104,3 +104,95 @@ x_test = x_test.reshape(10000,28,28,1)
 
 """# Training the Model"""
 
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten
+
+model = Sequential()
+
+# CONVOLUTIONAL LAYER
+model.add(Conv2D(filters=32, kernel_size=(4,4), input_shape=(28, 28, 1), activation='relu')) # filters almost always 2^n
+# POOLING LAYER
+model.add(MaxPool2D(pool_size=(2,2))) # in this case, half of the kernel size
+
+# FLATTEN IMAGES FROM 28 by 28 to 764 BEFORE FINAL LAYER
+model.add(Flatten())
+
+# 128 NEURONS IN DENSE HIDDEN LAYER (YOU CAN CHANGE THIS NUMBER OF NEURONS)
+model.add(Dense(128, activation='relu'))
+
+# LAST LAYER IS THE CLASSIFIER, THUS 10 POSSIBLE CLASSES
+model.add(Dense(10, activation='softmax'))  # SOFTMAX --> MULTICLASS PROBLEM
+
+# https://keras.io/metrics/
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics = ['accuracy'])
+
+model.summary()
+
+from tensorflow.keras.callbacks import EarlyStopping
+
+early_stop = EarlyStopping(monitor='val_loss', patience=1)
+
+"""## Train the Model"""
+
+model.fit(x_train, y_cat_train, epochs=10, validation_data=(x_test, y_cat_test), callbacks=[early_stop])
+
+"""## Evaluate the Model"""
+
+model.metrics_names
+
+metrics = pd.DataFrame(model.history.history)
+
+metrics
+
+metrics[['loss', 'val_loss']].plot()
+plt.show()
+
+metrics[['accuracy', 'val_accuracy']].plot()
+plt.show()
+
+print(model.metrics_names)
+print(model.evaluate(x_test, y_cat_test, verbose = 0))
+
+from sklearn.metrics import classification_report, confusion_matrix
+
+predictions = model.predict_classes(x_test)
+
+predictions_2 = np.argmax(model.predict(x_test), axis=-1)
+
+predictions[0]
+
+predictions_2[0]
+
+y_cat_test[0]
+
+y_test[0]
+
+print(classification_report(y_test, predictions))
+
+print(classification_report(y_test, predictions_2))
+
+print(confusion_matrix(y_test,predictions))
+
+print(confusion_matrix(y_test,predictions_2))
+
+import seaborn as sns
+
+plt.figure(figsize=(10,7))
+sns.heatmap(confusion_matrix(y_test, predictions_2), annot=True)
+plt.show()
+
+"""# Predicting a given image"""
+
+my_number = x_test[4]
+
+plt.imshow(my_number.reshape(28,28), cmap='Greys')
+plt.show()
+
+# SHAPE --> (num_images,width,height,color_channels)
+print(np.argmax(model.predict(my_number.reshape(1,28,28,1)), axis=-1))
+
+"""## Saving the Model"""
+
+model.save('mnist_CNN_model.h5')
