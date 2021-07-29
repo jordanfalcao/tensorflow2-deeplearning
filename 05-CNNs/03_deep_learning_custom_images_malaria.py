@@ -33,6 +33,13 @@ This Dataset is taken from the official NIH Website: https://ceb.nlm.nih.gov/rep
 Let's take a closer look at the data.
 """
 
+# !unrar x cell_images.rar
+
+# zip_path = base/’size_test/cats_dogs.zip’
+# !cp “{zip_path}” .
+# !unzip -q cats_dogs.zip
+# !rm cats_dogs.zip
+
 #  mounts the Google drive
 from google.colab import drive
 drive.mount('/content/drive')
@@ -70,6 +77,8 @@ len(os.listdir('/content/drive/MyDrive/Tensorflow/cell_images/train/parasitized'
 
 len(os.listdir('/content/drive/MyDrive/Tensorflow/cell_images/train/uninfected'))
 
+"""**Single image.**"""
+
 os.listdir(train_path+'/parasitized')[0]
 
 para_cell = train_path+'/parasitized'+'/C100P61ThinF_IMG_20150918_144104_cell_162.png'
@@ -84,9 +93,49 @@ unifected_cell = imread(unifected_cell_path)
 plt.imshow(unifected_cell)
 plt.show()
 
-"""**Let's find out the average dimensions of these images.**"""
+"""**The images have differents dimensions. Let's find out the average dimensions of these images.**"""
 
 para_img.shape
 
 unifected_cell.shape
+
+# Other options: https://stackoverflow.com/questions/1507084/how-to-check-dimensions-of-all-images-in-a-directory-using-python
+ dim1 = []
+ dim2 = []
+
+ for image_filename in os.listdir(test_path+'/uninfected'):
+
+   img = imread(test_path+'/uninfected/'+image_filename)
+   d1, d2, colors_channel = img.shape
+   dim1.append(d1)
+   dim2.append(d2)
+
+sns.jointplot(x= dim1, y = dim2)
+plt.show()
+
+# width pixel mean
+np.mean(dim1)
+
+# height pixel mean
+np.mean(dim2)
+
+# setting the average image dimension
+image_shape = (130,130,3)
+
+"""## Preparing the Data for the model
+
+There is too much data for us to read all at once in memory. We can use some built in functions in Keras to automatically process the data, generate a flow of batches from a directory, and also manipulate the images.
+
+### Image Manipulation
+
+Its usually a good idea to manipulate the images with rotation, resizing, and scaling so the model becomes more robust to different images that our data set doesn't have. We can use the **ImageDataGenerator** to do this automatically for us. Check out the documentation for a full list of all the parameters you can use here!
+"""
+
+data_dir = 'cell_images'
+
+os.listdir(data_dir)
+
+len(os.listdir('cell_images/test/parasitized'))
+
+len(os.listdir('cell_images/test/uninfected'))
 
