@@ -53,9 +53,18 @@ from matplotlib.image import imread
 import zipfile
 import os
 
+# drive path
+zip_path = '/content/drive/MyDrive/cell_images.rar'
+
+# copying the file from drive to colab
+!cp "{zip_path}" .
+
+# unrar the file
+!unrar x cell_images.rar
+
 #!unrar x "/content/drive/MyDrive/cell_images.rar" "/content/drive/MyDrive/Tensorflow"
 
-my_data_dir = '/content/drive/MyDrive/Tensorflow/cell_images'
+my_data_dir = '/content/cell_images'
 
 # CONFIRM THAT THIS REPORTS BACK 'test', and 'train'
 os.listdir(my_data_dir)
@@ -69,13 +78,13 @@ os.listdir(train_path)
 
 """**Let's check how many images there are.**"""
 
-len(os.listdir('/content/drive/MyDrive/Tensorflow/cell_images/test/parasitized'))
+len(os.listdir('/content/cell_images/test/parasitized'))
 
-len(os.listdir('/content/drive/MyDrive/Tensorflow/cell_images/test/uninfected'))
+len(os.listdir('/content/cell_images/test/uninfected'))
 
-len(os.listdir('/content/drive/MyDrive/Tensorflow/cell_images/train/parasitized'))
+len(os.listdir('/content/cell_images/train/parasitized'))
 
-len(os.listdir('/content/drive/MyDrive/Tensorflow/cell_images/train/uninfected'))
+len(os.listdir('/content/cell_images/train/uninfected'))
 
 """**Single image.**"""
 
@@ -88,7 +97,9 @@ para_img = imread(para_cell)
 plt.imshow(para_img)
 plt.show()
 
-unifected_cell_path = train_path+'/uninfected/'+os.listdir(train_path+'/uninfected')[0]
+os.listdir(train_path+'/uninfected')[0]
+
+unifected_cell_path = train_path+'/uninfected/'+'/C145P106ThinF_IMG_20151016_154719_cell_57.png'
 unifected_cell = imread(unifected_cell_path)
 plt.imshow(unifected_cell)
 plt.show()
@@ -131,11 +142,68 @@ There is too much data for us to read all at once in memory. We can use some bui
 Its usually a good idea to manipulate the images with rotation, resizing, and scaling so the model becomes more robust to different images that our data set doesn't have. We can use the **ImageDataGenerator** to do this automatically for us. Check out the documentation for a full list of all the parameters you can use here!
 """
 
-data_dir = 'cell_images'
+para_img.max()
 
-os.listdir(data_dir)
+unifected_cell.max()
 
-len(os.listdir('cell_images/test/parasitized'))
+unifected_cell.min()
 
-len(os.listdir('cell_images/test/uninfected'))
+para_img.min()
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+# many way to change the images
+help(ImageDataGenerator)
+
+image_gen = ImageDataGenerator(rotation_range=20, # rotate the image 20 degrees
+                               width_shift_range=0.10, # Shift the pic width by a max of 5%
+                               height_shift_range=0.10, # Shift the pic height by a max of 5%
+                               #rescale=1/255, # our data is already scaled.
+                               shear_range=0.1, # Shear means cutting away part of the image (max 10%)
+                               zoom_range=0.1, # Zoom in by 10% max
+                               horizontal_flip=True, # Allo horizontal flipping
+                               fill_mode='nearest' # Fill in missing pixels with the nearest filled value
+                              )
+
+plt.imshow(para_img)
+plt.show()
+
+# randomly transforming the image
+plt.imshow(image_gen.random_transform(para_img))
+plt.show()
+
+# randomly transforming the image
+plt.imshow(image_gen.random_transform(para_img))
+plt.show()
+
+"""### Generating many manipulated images from a directory
+
+
+In order to use .flow_from_directory, you must organize the images in sub-directories. This is an absolute requirement, otherwise the method won't work. The directories should only contain images of one class, so one folder per class of images.
+
+Structure Needed:
+
+* Image Data Folder
+    * Class 1
+        * 0.jpg
+        * 1.jpg
+        * ...
+    * Class 2
+        * 0.jpg
+        * 1.jpg
+        * ...
+    * ...
+    * Class n
+"""
+
+# our data is separated in 2 directories
+image_gen.flow_from_directory(train_path)
+
+# our data is separated in 2 directories
+image_gen.flow_from_directory(test_path)
+
+"""# Creating the Model"""
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense, Conv2D, MaxPooling2D
 
