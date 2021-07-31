@@ -33,8 +33,6 @@ This Dataset is taken from the official NIH Website: https://ceb.nlm.nih.gov/rep
 Let's take a closer look at the data.
 """
 
-# !unrar x cell_images.rar
-
 # zip_path = base/’size_test/cats_dogs.zip’
 # !cp “{zip_path}” .
 # !unzip -q cats_dogs.zip
@@ -207,3 +205,72 @@ image_gen.flow_from_directory(test_path)
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense, Conv2D, MaxPooling2D
 
+#https://stats.stackexchange.com/questions/148139/rules-for-selecting-convolutional-neural-network-hyperparameters
+model = Sequential()
+
+model.add(Conv2D(filters=32, kernel_size=(3,3),input_shape=image_shape, activation='relu',))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+model.add(Conv2D(filters=64, kernel_size=(3,3),input_shape=image_shape, activation='relu',))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+model.add(Conv2D(filters=64, kernel_size=(3,3),input_shape=image_shape, activation='relu',))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+
+model.add(Flatten())
+
+
+model.add(Dense(128))
+model.add(Activation('relu'))
+
+# Dropouts help reduce overfitting by randomly turning neurons off during training.
+# Here we say randomly turn off 50% of neurons.
+model.add(Dropout(0.5))
+
+# Last layer, remember its binary so we use sigmoid
+model.add(Dense(1))
+model.add(Activation('sigmoid'))
+
+model.compile(loss='binary_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+
+model.summary()
+
+"""## Early Stopping"""
+
+from tensorflow.keras.callbacks import EarlyStopping
+
+early_stop = EarlyStopping(monitor='val_loss',patience=2)
+
+"""## Training the Model"""
+
+batch_size = 16
+
+image_shape[:2]
+
+train_image_gen = image_gen.flow_from_directory(train_path,
+                                                target_size=image_shape[:2],
+                                                color_mode='rgb',
+                                                batch_size=batch_size,
+                                                class_mode='binary')
+
+test_image_gen = image_gen.flow_from_directory(test_path,
+                                                target_size=image_shape[:2],
+                                                color_mode='rgb',
+                                                batch_size=batch_size,
+                                                class_mode='binary',
+                                               shuffle=False)
+
+train_image_gen.class_indices
+
+test_image_gen.class_indices
+
+results = model.fit_generator(train_image_gen, epochs=20,
+                              validation_data=test_image_gen,
+                              callbacks=[early_stop])
+
+from tensorflow.keras.models import load_model
+
+model.save('malaria_detector.h5')
