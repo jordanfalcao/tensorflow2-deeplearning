@@ -267,10 +267,73 @@ train_image_gen.class_indices
 
 test_image_gen.class_indices
 
-results = model.fit_generator(train_image_gen, epochs=20,
-                              validation_data=test_image_gen,
-                              callbacks=[early_stop])
+# results = model.fit_generator(train_image_gen, epochs=20,
+#                               validation_data=test_image_gen,
+#                               callbacks=[early_stop])
 
 from tensorflow.keras.models import load_model
 
-model.save('malaria_detector.h5')
+# model.save('my_malaria_detector.h5')
+
+# loading created model
+model = load_model('my_malaria_detector.h5')
+
+"""# Evaluating the Model"""
+
+# losses = pd.DataFrame(model.history.history)
+
+losses[['loss','val_loss']].plot()
+
+model.metrics_names
+
+model.evaluate_generator(test_image_gen)
+
+# https://datascience.stackexchange.com/questions/13894/how-to-get-predictions-with-predict-generator-on-streaming-test-data-in-keras
+pred_probabilities = model.predict_generator(test_image_gen)
+
+pred_test = model.predict(test_image_gen)
+
+pred_probabilities
+
+test_image_gen.classes
+
+# this value must be discussed with a specialist
+predictions = pred_probabilities > 0.5
+
+predictions
+
+from sklearn.metrics import classification_report, confusion_matrix
+
+print(classification_report(test_image_gen.classes, predictions))
+
+confusion_matrix(test_image_gen.classes, predictions)
+
+"""# Predicting on an Image"""
+
+from tensorflow.keras.preprocessing import image
+
+para_cell
+
+my_image = image.load_img(para_cell, target_size=image_shape)
+
+my_image
+
+type(my_image)
+
+my_image = image.img_to_array(my_image)
+
+my_image
+
+type(my_image)
+
+my_image.shape
+
+# need to add batch to call in the model
+my_image = np.expand_dims(my_image, axis = 0)
+
+my_image.shape
+
+# almost 0
+model.predict(my_image)
+
+test_image_gen.class_indices
