@@ -50,7 +50,7 @@ from tensorflow.keras.datasets import fashion_mnist
 
 import matplotlib.pyplot as plt
 
-x_train.shape
+x_train[0]
 
 plt.imshow(x_train[0], cmap='Blues_r')
 plt.show()
@@ -74,3 +74,113 @@ x_test = x_test/255
 
 """**Task 4: Reshape the X arrays to include a 4 dimension of the single channel. Similar to what we did for the numbers MNIST data set.**"""
 
+x_train.shape
+
+x_test.shape
+
+x_train = x_train.reshape(60000, 28, 28, 1)
+
+x_test = x_test.reshape(10000, 28, 28, 1)
+
+"""**TASK 5: Convert the y_train and y_test values to be one-hot encoded for categorical analysis by Keras.**"""
+
+from tensorflow.keras.utils import to_categorical
+
+np.unique(y_test)
+
+y_cat_test = to_categorical(y_test, 10)
+
+y_cat_train = to_categorical(y_train, 10)
+
+"""## Building the Model
+
+**TASK 6: Use Keras to create a model consisting of at least the following layers (but feel free to experiment):**
+
+* 2D Convolutional Layer, filters=32 and kernel_size=(4,4)
+* Pooling Layer where pool_size = (2,2)
+
+* Flatten Layer
+* Dense Layer (128 Neurons, but feel free to play around with this value), RELU activation
+
+* Final Dense Layer of 10 Neurons with a softmax activation
+
+**Then compile the model with these parameters: loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy']**
+"""
+
+from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Activation
+from tensorflow.keras.models import Sequential
+
+model = Sequential()
+
+# CONVOLUTIONAL LAYER
+model.add(Conv2D(32, kernel_size=(4,4), input_shape=(28, 28, 1), activation='relu'))
+# POOLING LAYER
+model.add(MaxPool2D(pool_size=(2,2)))
+
+# FLATTEN IMAGES FROM 28 by 28 to 764 BEFORE FINAL LAYER
+model.add(Flatten())
+
+# 128 NEURONS IN DENSE HIDDEN LAYER
+model.add(Dense(units=128, activation='relu'))
+
+# LAST LAYER IS THE CLASSIFIER, THUS 10 POSSIBLE CLASSES
+model.add(Dense(10,activation='softmax'))
+
+
+model.compile(optimizer='adam', loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+model.summary()
+
+"""### Training the Model
+**TASK 7: Train/Fit the model to the x_train set. Amount of epochs is up to you.**
+"""
+
+from tensorflow.keras.callbacks import EarlyStopping
+
+early_stop = EarlyStopping(monitor='val_loss',patience=2)
+
+model.fit(x_train, y_cat_train, validation_data=(x_test, y_cat_test), epochs=10, callbacks=[early_stop])
+
+"""### Evaluating the Model
+
+**TASK 8: Show the accuracy,precision,recall,f1-score the model achieved on the x_test data set. Keep in mind, there are quite a few ways to do this, but we recommend following the same procedure we showed in the MNIST lecture.**
+"""
+
+metrics = pd.DataFrame(model.history.history)
+
+metrics.head()
+
+metrics[['loss', 'val_loss']].plot()
+plt.show()
+
+metrics[['accuracy', 'val_accuracy']].plot()
+plt.show()
+
+model.metrics_names
+
+model.evaluate(x_test, y_cat_test)
+
+from sklearn.metrics import confusion_matrix, classification_report
+
+predictions = np.argmax(model.predict(x_test), axis=-1)
+
+print(classification_report(y_test, predictions))
+
+print(confusion_matrix(y_test, predictions))
+
+"""# Predicting on an Image"""
+
+my_image = x_test[0].reshape(1,28,28,1)
+
+plt.imshow(x_test[0].reshape(28,28))
+plt.show()
+
+np.argmax(model.predict(my_image), axis=-1)
+
+"""9 = ankle boot.
+
+## Saving the Model
+"""
+
+model.save('fashion_mnist_model.h5')
