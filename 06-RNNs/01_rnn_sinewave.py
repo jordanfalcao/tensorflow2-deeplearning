@@ -112,3 +112,61 @@ training/validation.
         (except maybe the last one).
 """
 
+from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
+
+# define generator
+length = 2 # Length of the output sequences (in number of timesteps)
+batch_size = 1 #Number of timeseries samples in each batch
+
+generator = TimeseriesGenerator(scaled_train, targets=scaled_train, length=length, batch_size=batch_size)
+
+len(scaled_train)
+
+# X - generator_length
+len(generator)
+
+generator[0]
+
+X, y = generator[0]
+
+print(f'Given the Array: \n{X.flatten()}')
+print(f'Predict this y: \n {y}')
+
+scaled_train[:3]
+
+# Let's redefine to get 25 steps back and then predict the next step out
+length = 50 # Length of the output sequences (in number of timesteps)
+generator = TimeseriesGenerator(scaled_train, scaled_train, length=length, batch_size=batch_size)
+
+# 451 - 25
+len(generator)
+
+X,y = generator[0]
+
+print(f'Given the Array: \n{X.flatten()}')
+print(f'Predict this y: \n {y}')
+
+"""### Create the Model"""
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense,LSTM,SimpleRNN
+
+# We're only using one feature in our time series
+n_features = 1
+
+# define model
+model = Sequential()
+
+# Simple RNN layer
+model.add(SimpleRNN(50,input_shape=(length, n_features)))
+
+# Final Prediction
+model.add(Dense(1))
+
+model.compile(optimizer='adam', loss='mse')
+
+model.summary()
+
+# fit model
+model.fit_generator(generator,epochs=5)
+
