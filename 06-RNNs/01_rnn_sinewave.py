@@ -134,11 +134,11 @@ print(f'Predict this y: \n {y}')
 
 scaled_train[:3]
 
-# Let's redefine to get 25 steps back and then predict the next step out
+# Let's redefine to get 50 steps back and then predict the next step out
 length = 50 # Length of the output sequences (in number of timesteps)
 generator = TimeseriesGenerator(scaled_train, scaled_train, length=length, batch_size=batch_size)
 
-# 451 - 25
+# 451 - 50
 len(generator)
 
 X,y = generator[0]
@@ -170,3 +170,179 @@ model.summary()
 # fit model
 model.fit_generator(generator,epochs=5)
 
+model.history.history.keys()
+
+losses = pd.DataFrame(model.history.history)
+losses.plot()
+
+"""## Evaluate on Test Data"""
+
+# last 50 points to predict the first test point
+first_eval_batch = scaled_train[-length:]
+
+first_eval_batch
+
+# reshape to set in the model
+first_eval_batch = first_eval_batch.reshape((1, length, n_features))
+
+model.predict(first_eval_batch)
+
+# comparing
+scaled_test[0]
+
+"""Now let's put this logic in a for loop to predict into the future for the entire test range.
+
+----
+"""
+
+test_predictions = []
+
+first_eval_batch = scaled_train[-length:]
+current_batch = first_eval_batch.reshape((1, length, n_features))
+
+current_batch.shape
+
+current_batch
+
+# shifting and adding 99 at the ending list
+np.append(current_batch[:,1:,:],[[[99]]],axis=1)
+
+"""**NOTE: PAY CLOSE ATTENTION HERE TO WHAT IS BEING OUTPUTED AND IN WHAT DIMENSIONS. ADD YOUR OWN PRINT() STATEMENTS TO SEE WHAT IS TRULY GOING ON!!**"""
+
+test_predictions = []
+
+first_eval_batch = scaled_train[-length:]
+current_batch = first_eval_batch.reshape((1, length, n_features))
+
+for i in range(len(test)):
+    
+    # get prediction 1 time stamp ahead ([0] is for grabbing just the number instead of [array])
+    current_pred = model.predict(current_batch)[0]
+    
+    # store prediction
+    test_predictions.append(current_pred) 
+    
+    # update batch to now include prediction and drop first value
+    current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
+
+test_predictions
+
+scaled_test
+
+"""### Inverse Transformations and Compare"""
+
+true_predictions = scaler.inverse_transform(test_predictions)
+
+true_predictions
+
+test.head()
+
+# IGNORE WARNINGS
+test['Predictions'] = true_predictions
+
+test
+
+test.plot(figsize=(10,7))
+plt.show()
+
+model.save('rnn_sine_model.h5')
+
+"""## Adding in Early Stopping and Validation Generator"""
+
+from tensorflow.keras.callbacks import EarlyStopping
+
+early_stop = EarlyStopping(monitor='val_loss',patience=2)
+
+length = 49 # at least 1 less than the length
+generator = TimeseriesGenerator(scaled_train,scaled_train,
+                               length=length,batch_size=1)
+
+
+validation_generator = TimeseriesGenerator(scaled_test,scaled_test,
+                                          length=length,batch_size=1)
+
+"""# LSTMS"""
+
+# define model
+model = Sequential()
+
+# LSTM layer
+model.add(LSTM(50,input_shape=(length, n_features)))
+
+# Final Prediction layer
+model.add(Dense(1))
+
+model.compile(optimizer='adam', loss='mse')
+
+model.fit_generator(generator,epochs=20,
+                   validation_data=validation_generator,
+                   callbacks=[early_stop])
+
+test_predictions = []
+
+first_eval_batch = scaled_train[-length:]
+current_batch = first_eval_batch.reshape((1, length, n_features))
+
+for i in range(len(test)):
+    
+    # get prediction 1 time stamp ahead ([0] is for grabbing just the number instead of [array])
+    current_pred = model.predict(current_batch)[0]
+    
+    # store prediction
+    test_predictions.append(current_pred) 
+    
+    # update batch to now include prediction and drop first value
+    current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
+
+# IGNORE WARNINGS
+true_predictions = scaler.inverse_transform(test_predictions)
+test['LSTM Predictions'] = true_predictions
+test.plot(figsize=(12,8))
+
+"""# Forecasting
+
+Forecast into unknown range. We should first utilize all our data, since we are now forecasting!
+"""
+
+# all the data
+full_scaler = MinMaxScaler()
+scaled_full_data = full_scaler.fit_transform(df)
+
+length = 50 # Length of the output sequences (in number of timesteps)
+generator = TimeseriesGenerator(scaled_full_data, scaled_full_data, length=length, batch_size=1)
+
+model = Sequential()
+model.add(LSTM(50, input_shape=(length, n_features)))
+model.add(Dense(1))
+model.compile(optimizer='adam', loss='mse')
+model.fit_generator(generator,epochs=4)
+
+forecast = []
+
+first_eval_batch = scaled_full_data[-length:]
+current_batch = first_eval_batch.reshape((1, length, n_features))
+
+for i in range(len(test)):
+    
+    # get prediction 1 time stamp ahead ([0] is for grabbing just the number instead of [array])
+    current_pred = model.predict(current_batch)[0]
+    
+    # store prediction
+    forecast.append(current_pred) 
+    
+    # update batch to now include prediction and drop first value
+    current_batch = np.append(current_batch[:,1:,:],[[current_pred]],axis=1)
+
+forecast = scaler.inverse_transform(forecast)
+
+df
+
+forecast_index = np.arange(50.1,55.1,step=0.1)
+
+len(forecast_index)
+
+plt.plot(df.index,df['Sine'])
+plt.plot(forecast_index,forecast)
+plt.show()
+
+model.save('lstm_sine_model.h5')
