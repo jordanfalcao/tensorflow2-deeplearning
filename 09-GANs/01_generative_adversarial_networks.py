@@ -118,6 +118,76 @@ epochs = 1
 # Grab the seprate components
 generator, discriminator = GAN.layers
 
-# For every epoch
+# For every epcoh
 for epoch in range(epochs):
-  print
+    print(f"Currently on Epoch {epoch+1}")
+    i = 0
+    # For every batch in the dataset
+    for X_batch in dataset:
+        i=i+1
+        if i%100 == 0:
+            print(f"\tCurrently on batch number {i} of {len(my_data)//batch_size}")
+        #####################################
+        ## TRAINING THE DISCRIMINATOR ######
+        ###################################
+        
+        # Create Noise
+        noise = tf.random.normal(shape=[batch_size, codings_size])
+        
+        # Generate numbers based just on noise input
+        gen_images = generator(noise)
+        
+        # Concatenate Generated Images against the Real Ones
+        # TO use tf.concat, the data types must match!
+        X_fake_vs_real = tf.concat([gen_images, tf.dtypes.cast(X_batch,tf.float32)], axis=0)
+        
+        # Targets set to zero for fake images and 1 for real images
+        y1 = tf.constant([[0.]] * batch_size + [[1.]] * batch_size)
+        
+        # This gets rid of a Keras warning
+        discriminator.trainable = True
+        
+        # Train the discriminator on this batch
+        discriminator.train_on_batch(X_fake_vs_real, y1)
+        
+        
+        #####################################
+        ## TRAINING THE GENERATOR     ######
+        ###################################
+        
+        # Create some noise
+        noise = tf.random.normal(shape=[batch_size, codings_size])
+        
+        # We want discriminator to belive that fake images are real
+        y2 = tf.constant([[1.]] * batch_size)
+        
+        # Avois a warning
+        discriminator.trainable = False
+        
+        GAN.train_on_batch(noise, y2)
+        
+print("TRAINING COMPLETE")
+
+noise = tf.random.normal(shape=[10, codings_size])
+
+noise.shape
+
+plt.imshow(noise)
+plt.show()
+
+image = generator(noise)
+
+plt.imshow(image[1])
+plt.show()
+
+plt.imshow(image[3])
+plt.show()
+
+"""## Saving models"""
+
+generator.save('mnist_GAN_generator.h5')
+
+discriminator.save('mnist_GAN_discriminator.h5')
+
+GAN.save('mnist_GAN_model.h5')
+
