@@ -24,3 +24,138 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+iris = pd.read_csv("iris.csv")
+
+iris.head()
+
+"""## Data Processing
+
+### Features and Target
+"""
+
+X = iris.drop('species',axis=1)
+
+y = iris['species']
+
+y.unique()
+
+# Lots of ways to one hot encode
+# https://stackoverflow.com/questions/47573293/unable-to-transform-string-column-to-categorical-matrix-using-keras-and-sklearn
+# https://stackoverflow.com/questions/35107559/one-hot-encoding-of-string-categorical-features
+
+from sklearn.preprocessing import LabelBinarizer
+
+encoder = LabelBinarizer()
+
+y = encoder.fit_transform(y)
+
+y[45:55]
+
+"""## Train Test Split"""
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=101)
+
+"""### Scaling"""
+
+scaler = MinMaxScaler()
+
+scaler.fit(X_train)
+
+scaled_X_train = scaler.transform(X_train)
+
+scaled_X_test = scaler.transform(X_test)
+
+"""## Model
+
+
+### Creating the Model
+"""
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+
+model = Sequential()
+
+model.add(Dense(units=4,activation='relu',input_shape=[4,]))
+
+# Last layer for multi-class classification of 3 species
+model.add(Dense(units=3,activation='softmax'))
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+"""## Model Training"""
+
+from tensorflow.keras.callbacks import EarlyStopping
+
+early_stop = EarlyStopping(patience=10)
+
+model.fit(x=scaled_X_train, 
+          y=y_train, 
+          epochs=300,
+          validation_data=(scaled_X_test, y_test), verbose=1 ,callbacks=[early_stop])
+
+"""## Model Evaluation"""
+
+metrics = pd.DataFrame(model.history.history)
+
+metrics.head()
+
+metrics[['loss','val_loss']].plot()
+plt.show()
+
+metrics[['accuracy','val_accuracy']].plot()
+plt.show()
+
+model.evaluate(scaled_X_test,y_test,verbose=0)
+
+"""## Ready Model for Deployment"""
+
+epochs = len(metrics)
+
+# all the data
+scaled_X = scaler.fit_transform(X)
+
+model = Sequential()
+
+model.add(Dense(units=4,activation='relu'))
+
+# Last layer for multi-class classification of 3 species
+model.add(Dense(units=3,activation='softmax'))
+
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',metrics=['accuracy'])
+
+model.fit(scaled_X,y,epochs=epochs)
+
+model.evaluate(scaled_X_test,y_test,verbose=0)
+
+model.save("final_iris_model.h5")
+
+"""### Saving Scaler"""
+
+import joblib
+
+joblib.dump(scaler,'iris_scaler.pkl')
+
+"""## Predicting a Single New Flower"""
+
+from tensorflow.keras.models import load_model
+
+flower_model = load_model("final_iris_model.h5")
+
+flower_scaler = joblib.load("iris_scaler.pkl")
+
+iris.head(1)
+
+flower_example = {'sepal_length':5.1,
+                 'sepal_width':3.5,
+                 'petal_length':1.4,
+                 'petal_width':0.2}
+
+flower_example.keys()
+
+encoder.classes_
+
