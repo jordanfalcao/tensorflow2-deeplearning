@@ -92,10 +92,10 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 early_stop = EarlyStopping(patience=10)
 
-model.fit(x=scaled_X_train, 
-          y=y_train, 
-          epochs=300,
-          validation_data=(scaled_X_test, y_test), verbose=1 ,callbacks=[early_stop])
+# model.fit(x=scaled_X_train, 
+#           y=y_train, 
+#           epochs=300,
+#           validation_data=(scaled_X_test, y_test), verbose=1 ,callbacks=[early_stop])
 
 """## Model Evaluation"""
 
@@ -159,3 +159,28 @@ flower_example.keys()
 
 encoder.classes_
 
+def return_prediction(model,scaler,sample_json):
+    
+    # For larger data features, you should probably write a for loop
+    # That builds out this array for you
+    
+    s_len = sample_json['sepal_length']
+    s_wid = sample_json['sepal_width']
+    p_len = sample_json['petal_length']
+    p_wid = sample_json['petal_width']
+    
+    flower = [[s_len,s_wid,p_len,p_wid]]
+    
+    flower = scaler.transform(flower)
+    
+    classes = np.array(['setosa', 'versicolor', 'virginica'])
+        
+    class_ind = np.argmax(model.predict(flower), axis=-1)
+
+    # deprecated
+    # class_ind = model.predict_classes(flower)
+    
+    return classes[class_ind][0]
+
+# calling the fuction 
+return_prediction(flower_model,flower_scaler,flower_example)
